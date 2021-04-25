@@ -1,160 +1,341 @@
-
-export type Method = 'GET' | 'POST' | 'PUT' | 'DELETE'
-export type ResponseType = 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream'
-
-export interface AxiosRequest {
-    baseURL?: string;
-    url: string;
-    data?: any;
-    params?: any;
-    method?: Method;
-    headers?: any;
-    timeout?: number;
-    responseType?: ResponseType;
+import axios from 'axios'
+import router from '@/router/index'
+import authorization from '@/api/author'
+import store from '@/store'
+import {
+  ElMessageBox,
+  ElMessage
+} from 'element-plus'
+axios.defaults.timeout = 20000
+axios.defaults.withCredentials = false
+axios.defaults.baseURL = process.env.VUE_APP_URL
+interface IError {
+  response: any
 }
-
-export interface AxiosResponse {
-    data: any;
-    headers: any;
-    request?: any;
-    status: number;
-    statusText: string;
-    config: AxiosRequest;
+interface IData {
+  [propName: string]: any;
 }
-
-export interface CustomResponse {
-    readonly status: boolean;
-    readonly message: string;
-    data: any;
-    origin?: any;
-}
-
-export interface GetDemo {
-    id: number;
-    str: string;
-}
-
-export interface PostDemo {
-    id: number;
-    list: Array<{
-        id: number;
-        version: number;
-    }>;
-}
-import axios, { AxiosRequestConfig, Method } from 'axios';
-
-// 定义接口
-interface PendingType {
-    url?: string;
-    method?: Method;
-    params: any;
-    data: any;
-    cancel: Function;
-}
-
-// 取消重复请求
-const pending: Array<PendingType> = [];
-const CancelToken = axios.CancelToken;
-// axios 实例
-const instance = axios.create({
-    timeout: 10000,
-    responseType: 'json'
-})
-// 移除重复请求
-const removePending = (config: AxiosRequestConfig) => {
-    for (const key in pending) {
-        const item: number = +key;
-        const list: PendingType = pending[key];
-        // 当前请求在数组中存在时执行函数体
-        if (list.url === config.url && list.method === config.method && JSON.stringify(list.params) === JSON.stringify(config.params) && JSON.stringify(list.data) === JSON.stringify(config.data)) {
-            // 执行取消操作
-            list.cancel('操作太频繁，请稍后再试');
-            // 从数组中移除记录
-            pending.splice(item, 1);
-        }
+axios.interceptors.request.use(
+  config => {
+    // const token = getCookie('名称');注意使用的时候需要引入cookie方法，推荐js-cookie
+    const token: string = JSON.parse(authorization())
+    store.commit('SETLOADING', true)
+    if (token) { // 判断是否存在token，如果存在的话，则每个http header都加上token
+      config.headers = {
+        'Content-Type': 'application/json',
+        Authorization: token
+      }
+    } else {
+      config.headers = {
+        'Content-Type': 'application/json'
+      }
     }
-};
-
-// 添加请求拦截器
-instance.interceptors.request.use(
-    request => {
-        removePending(request);
-        request.cancelToken = new CancelToken((c) => {
-            pending.push({ url: request.url, method: request.method, params: request.params, data: request.data, cancel: c });
-        });
-        return request;
-    },
-    error => {
-        return Promise.reject(error);
+    config.data = JSON.stringify(config.data)
+    return config
+  }
+)
+function codeStatus (error: IError): void {
+  const code = error.response.data.code
+  switch (code) {
+    case 400:
+      ElMessage.error(error.response.data.messageInfo)
+      break
+    case 4001:
+      if (error.response.data.messageInfo) {
+        ElMessage.error(error.response.data.messageInfo)
+      } else if (error.response.data.messageKey) {
+        ElMessage.error(error.response.data.messageKey)
+      } else {
+        ElMessage.error('接口返回值不规范')
+      }
+      break
+    case 4002:
+      ElMessage.error(error.response.data.messageInfo)
+      break
+    default:
+      ElMessageBox({
+        type: 'warning',
+        title: '提示',
+        message: '系统异常，请稍后再试'
+      })
+  }
+}
+axios.interceptors.response.use(
+  response => {
+    store.commit('SETLOADING', false)
+    return response
+  },
+  error => {
+    store.commit('SETLOADING', false)
+    const arr = ['key_user_no_have_merchant_error', 'key_ps_and_user_name_error']
+    if (error.response) {
+      switch (error.response.status) {
+        case 400:
+          codeStatus(error)
+          // return error.response
+          break
+        case 403:
+          ElMessageBox({
+            type: 'warning',
+            title: '提示',
+            message: '权限未通过校验'
+          })
+          break
+        case 404:
+          ElMessageBox({
+            type: 'warning',
+            title: '提示',
+            message: '链接出错，请检查网络状况'
+          })
+          break
+        case 401:
+          if (arr.includes(error.response.data.messageKey)) {
+            ElMessage.error(error.response.data.messageInfo)
+          } else {
+            ElMessageBox({
+              type: 'warning',
+              title: '提示',
+              message: '登录过期, 请先登录'
+            })
+            router.push({
+              path: '/login'
+            })
+          }
+          break
+        case 500:
+          ElMessageBox({
+            type: 'warning',
+            title: '提示',
+            message: '系统异常，请稍后再试'
+          })
+          break
+        default:
+          ElMessageBox({
+            type: 'warning',
+            title: '提示',
+            message: '链接出错，请检查网络状况'
+          })
+      }
+    } else {
+      ElMessage.error('请检查您的网络')
     }
-);
-
-// 添加响应拦截器
-instance.interceptors.response.use(
-    response => {
-        removePending(response.config);
-
-        const errorCode = response?.data?.errorCode;
-        switch (errorCode) {
-            case '401':
-                // 根据errorCode，对业务做异常处理(和后端约定)
-                break;
-            default:
-                break;
+    return Promise.reject(error)
+  })
+export function fetch (url: string, params: IData): Promise<any> {
+  return new Promise((resolve, reject) => {
+    axios.get(url, {
+      params: params
+    })
+      .then(response => {
+        if (response && response.data) {
+          resolve(response.data)
         }
+      })
+      .catch(err => {
+        reject(err)
+      })
+  })
+}
 
-        return response;
-    },
-    error => {
-        const response = error.response;
+/**
+ * 封装get Download方法
+ * @param url
+ * @param blob
+ * @returns {Promise}
+ */
+export function getDownload (url: string, params: IData): Promise<any> {
+  return new Promise((resolve, reject) => {
+    axios.get(url, {
+      params: params,
+      responseType: 'blob'
+    })
+      .then(response => {
+        resolve(response)
+      })
+      .catch(err => {
+        reject(err)
+      })
+  })
+}
+/**
+ * 封装get File方法
+ * @param url
+ * @param blob
+ * @returns {Promise}
+ */
+export function getFile (url: string, params: IData): Promise<any> {
+  return new Promise((resolve, reject) => {
+    axios.get(url + '/' + params, {
+      responseType: 'blob'
+    })
+      .then(response => {
+        resolve(response)
+      })
+      .catch(err => {
+        reject(err)
+      })
+  })
+}
 
-        // 根据返回的http状态码做不同的处理
-        switch (response?.status) {
-            case 401:
-                // token失效
-                break;
-            case 403:
-                // 没有权限
-                break;
-            case 500:
-                // 服务端错误
-                break;
-            case 503:
-                // 服务端错误
-                break;
-            default:
-                break;
+/**
+ * 封装post Download方法
+ * @param url
+ * @param blob
+ * @returns {Promise}
+ */
+
+export function postDownload (url: string, data: IData): Promise<any> {
+  return new Promise((resolve, reject) => {
+    axios.post(url, data, {
+      responseType: 'blob'
+    })
+      .then(response => {
+        resolve(response)
+      })
+      .catch(err => {
+        reject(err)
+      })
+  })
+}
+
+/**
+ * 封装get方法
+ * @param url
+ * @single data
+ * @returns {Promise}
+ */
+
+export function singlefetch (url: string, params: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    axios.get(url + '/' + params)
+      .then(response => {
+        if (response && response.data) {
+          resolve(response.data)
         }
+      })
+      .catch(err => {
+        reject(err)
+      })
+  })
+}
 
-        // 超时重新请求
-        const config = error.config;
-        // 全局的请求次数,请求的间隙
-        const [RETRY_COUNT, RETRY_DELAY] = [3, 1000];
+/**
+ * 封装post请求
+ * @param url
+ * @param data
+ * @returns {Promise}
+ */
+export function post (url: string, data: IData): Promise<any> {
+  return new Promise((resolve, reject) => {
+    axios.post(url, data)
+      .then(response => {
+        resolve(response.data)
+      })
+      .catch(err => {
+        reject(err)
+      })
+  })
+}
 
-        if (config && RETRY_COUNT) {
-            // 设置用于跟踪重试计数的变量
-            config.__retryCount = config.__retryCount || 0;
-            // 检查是否已经把重试的总数用完
-            if (config.__retryCount >= RETRY_COUNT) {
-                return Promise.reject(response || { message: error.message });
-            }
-            // 增加重试计数
-            config.__retryCount++;
-            // 创造新的Promise来处理指数后退
-            const backoff = new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve();
-                }, RETRY_DELAY || 1);
-            });
-            // instance重试请求的Promise
-            return backoff.then(() => {
-                return instance(config);
-            });
+/**
+ * 封装patch请求
+ * @param url
+ * @param data
+ * @returns {Promise}
+ */
+
+export function patch (url: string, data: IData): Promise<any> {
+  return new Promise((resolve, reject) => {
+    axios.patch(url, data)
+      .then(response => {
+        resolve(response.data)
+      }, err => {
+        reject(err)
+      })
+  })
+}
+
+/**
+ * 封装put请求
+ * @param url
+ * @param data
+ * @returns {Promise}
+ */
+
+export function put (url: string, data: IData): Promise<any> {
+  return new Promise((resolve, reject) => {
+    axios.put(url, data)
+      .then(response => {
+        resolve(response.data)
+      }, err => {
+        reject(err)
+      })
+  })
+}
+
+/**
+ * 封装delete方法
+ * @param url
+ * @param data
+ * @returns {Promise}
+ */
+
+export function Delete (url: string, params: IData): Promise<any> {
+  return new Promise((resolve, reject) => {
+    axios.delete(url, {
+      data: params
+    })
+      .then(response => {
+        if (response) {
+          resolve(response.data)
         }
+      })
+      .catch(err => {
+        reject(err)
+      })
+  })
+}
+/**
+ * 封装delete方法
+ * @param url
+ * @param data
+ * @returns {Promise}
+ */
+export function singleDelete (url: string, params: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    axios.delete(url + '/' + params)
+      .then(response => {
+        if (response) {
+          resolve(response.data)
+        }
+      })
+      .catch(err => {
+        reject(err)
+      })
+  })
+}
 
-        // eslint-disable-next-line
-        return Promise.reject(response || {message: error.message});
+/**
+ * 封装上传头像方法
+ * @param url
+ * @param data
+ * @returns {Promise}
+ */
+
+export function upload (Url: string, data: IData): Promise<any> {
+  const instance = axios.create({
+    baseURL: process.env.BASEURL,
+    headers: {
+      'Content-Type': 'multipart/form-data'
     }
-);
-
-export default instance
+  })
+  return new Promise((resolve, reject) => {
+    instance.post(Url, data).then(response => {
+      if (response) {
+        resolve(response.data)
+      }
+    }).catch(error => {
+      reject(error)
+    })
+  })
+}

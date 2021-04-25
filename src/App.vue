@@ -1,32 +1,23 @@
 <template>
-  <div class='wrap'>
-    我是页面{{this.list}}
+  <div>
+    <router-view/>
   </div>
 </template>
-<script lang="ts">
-import { defineComponent, computed, onMounted } from 'vue'
-import { Store, useStore } from 'vuex'
-import TYPES from './store/actionType/index'
-import { ILogin } from './typings/login'
+
+<script lang='ts'>
+import { defineComponent } from 'vue'
 export default defineComponent({
-  setup () {
-    const store: Store<any> = useStore()
-    const list = computed(() => {
-      return store.state.List
-    })
-    const getList = (): void => {
-      store.dispatch(TYPES.LOGIN, [{ name: '123' }]).then((res: ILogin[]): void => {
-        console.log(res, 'res')
-      })
-    }
-    onMounted(() => {
-      getList()
-    })
-    return {
-      list
-    }
-  }
+  name: 'App'
 })
 </script>
-<style lang="less">
+
+<style>
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+  color: #2c3e50;
+  margin-top: 60px;
+}
 </style>

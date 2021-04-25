@@ -1,5 +1,6 @@
-import { ILoginState } from '../typings/login'
+import { ILoginState } from '../typing/login'
 export default <ILoginState> {
   List: [],
-  userName: ''
+  userName: '',
+  Loading: false
 }

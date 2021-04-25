@@ -10,7 +10,11 @@
   "dependencies": {
     "babel-polyfill": "^6.26.0",
     "core-js": "^3.6.5",
+    "element-plus": "^1.0.2-beta.28",
+    "js-cookie": "^2.2.1",
+    "moment": "^2.29.1",
     "save-dev": "0.0.1-security",
+    "typings": "^2.1.1",
     "vue": "^3.0.0",
     "vue-router": "^4.0.0-0",
     "vuex": "^4.0.0-0"
@@ -36,6 +40,7 @@
     "eslint-plugin-vue": "^7.0.0",
     "less": "^3.0.4",
     "less-loader": "^5.0.0",
-    "typescript": "~4.1.5"
+    "typescript": "~4.1.5",
+    "vue-cli-plugin-element-plus": "0.0.13"
   }
 }
