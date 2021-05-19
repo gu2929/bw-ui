@@ -1,23 +1,20 @@
 {
   "name": "vue3.0",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "lib": "vue-cli-service build --target lib packages/index.ts"
   },
   "dependencies": {
-    "babel-polyfill": "^6.26.0",
     "core-js": "^3.6.5",
-    "element-plus": "^1.0.2-beta.28",
-    "js-cookie": "^2.2.1",
-    "moment": "^2.29.1",
     "save-dev": "0.0.1-security",
-    "typings": "^2.1.1",
     "vue": "^3.0.0",
     "vue-router": "^4.0.0-0",
-    "vuex": "^4.0.0-0"
+    "vuex": "^4.0.0-0",
+    "element-plus": "^1.0.2-beta.44"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^4.18.0",
@@ -31,7 +28,6 @@
     "@vue/compiler-sfc": "^3.0.0",
     "@vue/eslint-config-standard": "^5.1.2",
     "@vue/eslint-config-typescript": "^7.0.0",
-    "axios": "^0.21.1",
     "eslint": "^6.7.2",
     "eslint-plugin-import": "^2.20.2",
     "eslint-plugin-node": "^11.1.0",

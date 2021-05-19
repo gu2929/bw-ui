@@ -19,6 +19,7 @@ npm run build
 ```
 npm run lint
 ```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+安装组件库
+npm install bwUi
+全局导入
+import { install } from 'bwUi'

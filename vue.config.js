@@ -8,7 +8,9 @@ module.exports = {
   productionSourceMap: true, // 生产环境是否生成 sourceMap 文件
   pages: {
     index: {
-      entry: 'src/main.ts',
+      entry: 'examples/main.ts',
+      template: 'public/index.html',
+      filename: 'index.html',
       chunks: ['chunk-vendors', 'chunk-common', 'index']
     }
   },
@@ -25,11 +27,16 @@ module.exports = {
     hotOnly: false,
     open: true // 配置自动启动浏览器
   },
-  configureWebpack: {
-    plugins: [
-      new webpack.ProvidePlugin({
-        moment: 'moment'
+  chainWebpack: config => {
+    config.module
+      .rule('js')
+      .include
+        .add('/packages')
+        .end()
+      .use('babel')
+        .loader('babel-loader')
+        .tap(options => {
+          return options
       })
-    ]
   }
 }
